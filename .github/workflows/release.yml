@@ -1,0 +1,59 @@
+# Copyright (c) 2026 Santander Group
+# SPDX-License-Identifier: Apache-2.0
+#
+# Release packaging. autoguardrails is distributed as a runnable research
+# scaffold (cloned and run in place), not as a PyPI package. On a published
+# GitHub Release this workflow builds a versioned source tarball and attaches
+# it to the release as a downloadable asset.
+#
+# Replace action references with SHA digests before publishing.
+
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    name: Build + attach source archive
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # required to upload the release asset
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683  # v4.2.2
+
+      - name: Build source archive
+        run: |
+          set -euo pipefail
+          NAME="autoguardrails-${GITHUB_REF_NAME:-dev}"
+          mkdir -p dist
+          tar --exclude-vcs \
+              --exclude='./dist' \
+              --exclude='./.github' \
+              --exclude='./.autoguardrails' \
+              --exclude='__pycache__' \
+              --exclude='.pytest_cache' \
+              --exclude='.mypy_cache' \
+              --exclude='.ruff_cache' \
+              --exclude='.coverage*' \
+              -czf "dist/${NAME}.tar.gz" .
+          (cd dist && sha256sum "${NAME}.tar.gz" > "${NAME}.tar.gz.sha256")
+          ls -l dist
+
+      - name: Upload archive as workflow artifact
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882  # v4.4.3
+        with:
+          name: source-archive
+          path: dist/
+
+      - name: Attach archive to the GitHub Release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${GITHUB_REF_NAME}" dist/* --clobber

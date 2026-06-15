@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a problem with the autoguardrails harness or CLI
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. Please do **not** include any
+        secrets, API keys, internal URLs, or proprietary content in this report.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear and concise description of the bug.
+      placeholder: When I run `python -m autoguardrails candidate`, it ...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps so we can reproduce the issue.
+      placeholder: |
+        1. Run `python -m autoguardrails baseline --reset`
+        2. Edit `policy.md`
+        3. Run `python -m autoguardrails candidate` and see error `...`
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen instead?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version / commit
+      description: Release tag or commit SHA you are running.
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Model provider
+      description: Which target/judge provider were you using?
+      options:
+        - stub (offline default)
+        - openai_compatible (real endpoint)
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Paste any error output (redact endpoints, keys, and sensitive data).
+      render: shell
