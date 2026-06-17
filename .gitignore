@@ -1,0 +1,13 @@
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.autoguardrails/
+.coverage
+coverage.xml
+htmlcov/
+dist/
+
+# Internal intake artifacts (not for publication)
+*.local
+

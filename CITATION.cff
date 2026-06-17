@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "autoguardrails: an autoresearch-style guardrail policy loop"
+abstract: >-
+  An LLM / AI-safety guardrail research library and evaluation harness
+  (autoresearch-style): it searches over a single mutable policy.md surface to
+  minimize attack success rate (ASR) against a fixed evaluation suite, with a
+  benign-pass floor.
+type: software
+authors:
+  - name: "Santander AI Lab"
+repository-code: "https://github.com/SantanderAI/autoguardrails"
+url: "https://github.com/SantanderAI/autoguardrails"
+license: Apache-2.0
+version: 0.1.0
+date-released: 2026-06-16
+keywords:
+  - ai
+  - ai-safety
+  - llm
+  - guardrails
+  - alignment
+  - red-teaming

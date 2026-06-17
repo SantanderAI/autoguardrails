@@ -1,0 +1,86 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autoguardrails"
+version = "0.1.0"
+description = "Autoresearch-style guardrail loop with a single mutable policy surface."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{ name = "Santander AI Lab" }]
+keywords = ["llm", "guardrails", "alignment", "ai-safety", "responsible-ai"]
+# NOTE: autoguardrails is intentionally stdlib-only. Do NOT add a
+# `dependencies = [...]` table here — the `license-check` workflow fails the
+# build if a runtime dependency manifest is introduced.
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.urls]
+Homepage = "https://github.com/SantanderAI/autoguardrails"
+Repository = "https://github.com/SantanderAI/autoguardrails"
+Issues = "https://github.com/SantanderAI/autoguardrails/issues"
+Changelog = "https://github.com/SantanderAI/autoguardrails/blob/main/CHANGELOG.md"
+
+[project.scripts]
+autoguardrails = "autoguardrails.__main__:main"
+
+[tool.setuptools]
+packages = ["autoguardrails"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["autoguardrails", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM", "PTH"]
+# Line length is enforced by Black formatting; E501 would also flag long string
+# literals that cannot be wrapped, so we defer length entirely to the formatter.
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["autoguardrails"]
+
+[tool.black]
+line-length = 100
+target-version = ["py310"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["autoguardrails"]
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_defs = false
+no_implicit_optional = true
+check_untyped_defs = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+addopts = "-v --cov=autoguardrails --cov-report=term-missing --cov-fail-under=80"
+
+[tool.coverage.run]
+branch = true
+source = ["autoguardrails"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 80
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
+    "\\.\\.\\.",
+]
+
