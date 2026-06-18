@@ -18,7 +18,13 @@ from autoguardrails.config import (
     ResearchConfig,
     load_endpoint_config,
 )
-from autoguardrails.eval_runner import evaluate_policy, load_eval_suite, repeat_evaluation
+from autoguardrails.eval_runner import (
+    aggregate_family_stats,
+    build_family_stats,
+    evaluate_policy,
+    load_eval_suite,
+    repeat_evaluation,
+)
 from autoguardrails.judge import (
     HeuristicFrozenJudge,
     OpenAICompatibleFrozenJudge,
@@ -41,7 +47,7 @@ from autoguardrails.model_adapter import (
     complete_chat,
     covered_families,
 )
-from autoguardrails.schema import EvalCase
+from autoguardrails.schema import EvalCase, EvaluationSummary, FamilyStat
 
 ROOT = Path(__file__).resolve().parents[1]
 SCAFFOLD_FILES = [
@@ -253,6 +259,46 @@ class EvalRunnerTests(unittest.TestCase):
         self.assertEqual(40, summary.benign_total)
 
 
+class FamilyStatTests(unittest.TestCase):
+    def test_asr_handles_empty_and_partial_families(self) -> None:
+        self.assertEqual(0.0, FamilyStat("empty", 0, 0).asr)
+        self.assertEqual(0.5, FamilyStat("partial", 4, 2).asr)
+        self.assertEqual(1.0, FamilyStat("full", 3, 3).asr)
+
+    def test_build_family_stats_is_sorted_by_name(self) -> None:
+        stats = build_family_stats({"violent": 2, "cyber": 1}, {"violent": 2})
+        self.assertEqual(["cyber", "violent"], [stat.name for stat in stats])
+        # A missing success entry defaults to zero rather than raising.
+        self.assertEqual(0, stats[0].attack_successes)
+
+    def test_aggregate_pools_counts_across_passes(self) -> None:
+        first = EvaluationSummary(
+            asr=1.0,
+            benign_pass=1.0,
+            attack_total=2,
+            attack_successes=2,
+            benign_total=0,
+            benign_passes=0,
+            elapsed_seconds=0.0,
+            family_stats=(FamilyStat("violent", 2, 2),),
+        )
+        second = EvaluationSummary(
+            asr=0.5,
+            benign_pass=1.0,
+            attack_total=3,
+            attack_successes=1,
+            benign_total=0,
+            benign_passes=0,
+            elapsed_seconds=0.0,
+            family_stats=(FamilyStat("violent", 2, 1), FamilyStat("cyber", 1, 0)),
+        )
+        pooled = {stat.name: stat for stat in aggregate_family_stats((first, second))}
+        self.assertEqual(4, pooled["violent"].attack_total)
+        self.assertEqual(3, pooled["violent"].attack_successes)
+        self.assertEqual(1, pooled["cyber"].attack_total)
+        self.assertEqual(0, pooled["cyber"].attack_successes)
+
+
 class LoopHelperTests(unittest.TestCase):
     def test_pure_helpers(self) -> None:
         self.assertEqual("a b c", normalize_text("  a   b\nc "))
@@ -333,9 +379,20 @@ class CliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             temp_root = Path(tmpdir)
             scaffold_workspace(temp_root)
+            (temp_root / "policy.md").write_text(COVERING_POLICY, encoding="utf-8")
             code, output = self._run(["--root", str(temp_root), "evaluate", "--repeat", "1"])
         self.assertEqual(0, code)
         self.assertIn("asr=", output)
+        # The per-family breakdown ranks leaky families first. With a policy that
+        # only covers jailbreak + obfuscation, the three uncovered families (asr
+        # 1.0) must all rank above the two covered families (asr 0.0).
+        self.assertIn("family:violent asr=1.0000", output)
+        self.assertIn("family:jailbreak asr=0.0000", output)
+        family_lines = [line for line in output.splitlines() if line.startswith("family:")]
+        self.assertEqual(5, len(family_lines))
+        violent_idx = next(i for i, line in enumerate(family_lines) if "violent" in line)
+        jailbreak_idx = next(i for i, line in enumerate(family_lines) if "jailbreak" in line)
+        self.assertLess(violent_idx, jailbreak_idx)
 
     def test_candidate_without_baseline_returns_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

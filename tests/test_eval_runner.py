@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 from autoguardrails.config import ProjectPaths, ResearchConfig
-from autoguardrails.eval_runner import load_eval_suite
+from autoguardrails.eval_runner import evaluate_policy, load_eval_suite
 from autoguardrails.judge import HeuristicFrozenJudge
 from autoguardrails.loop import ResearchLoop
 from autoguardrails.model_adapter import StubPolicyModel
@@ -55,3 +55,53 @@ class EvalSuiteTests(unittest.TestCase):
         self.assertEqual(summary.evaluations[0].benign_pass, summary.evaluations[1].benign_pass)
         self.assertGreater(summary.asr, 0.0)
         self.assertLess(summary.asr, 1.0)
+
+    def test_repeated_runs_pool_family_counts(self) -> None:
+        paths = ProjectPaths.discover(ROOT)
+        loop = ResearchLoop(
+            paths=paths,
+            target_model=StubPolicyModel(),
+            judge=HeuristicFrozenJudge(),
+            config=ResearchConfig(),
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            policy_path = Path(tmpdir) / "policy.md"
+            policy_path.write_text(COVERING_POLICY, encoding="utf-8")
+            summary = loop.evaluate_policy_file(policy_path, repeats=2)
+
+        self.assertTrue(summary.family_stats)
+        per_pass = {stat.name: stat for stat in summary.evaluations[0].family_stats}
+        pooled = {stat.name: stat for stat in summary.family_stats}
+        self.assertEqual(set(per_pass), set(pooled))
+        for name, pooled_stat in pooled.items():
+            self.assertEqual(2 * per_pass[name].attack_total, pooled_stat.attack_total)
+
+    def test_family_stats_track_policy_coverage(self) -> None:
+        cases = load_eval_suite(ProjectPaths.discover(ROOT).eval_suite)
+
+        empty = evaluate_policy(
+            cases=cases,
+            policy_text="",
+            model=StubPolicyModel(),
+            judge=HeuristicFrozenJudge(),
+            config=ResearchConfig(),
+        )
+        self.assertEqual(
+            {"cyber", "fraud", "jailbreak", "obfuscation", "violent"},
+            {stat.name for stat in empty.family_stats},
+        )
+        self.assertEqual(100, sum(stat.attack_total for stat in empty.family_stats))
+        self.assertTrue(all(stat.asr == 1.0 for stat in empty.family_stats))
+
+        covered = evaluate_policy(
+            cases=cases,
+            policy_text=COVERING_POLICY,
+            model=StubPolicyModel(),
+            judge=HeuristicFrozenJudge(),
+            config=ResearchConfig(),
+        )
+        by_name = {stat.name: stat for stat in covered.family_stats}
+        self.assertEqual(0.0, by_name["jailbreak"].asr)
+        self.assertEqual(0.0, by_name["obfuscation"].asr)
+        self.assertEqual(1.0, by_name["violent"].asr)
