@@ -36,5 +36,5 @@ jobs:
         with:
           path-to-signatures: ".cla-signatures/v1/cla.json"
           path-to-document: "https://github.com/SantanderAI/cla/blob/main/CLA.md"
-          branch: main
+          branch: cla-signatures
           allowlist: dependabot[bot],opensource-SantanderAI
