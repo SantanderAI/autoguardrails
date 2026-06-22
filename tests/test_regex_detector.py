@@ -5,6 +5,7 @@
 These lock in the obfuscated-variant coverage that the substring classifier
 missed, and guard against benign false positives.
 """
+
 from __future__ import annotations
 
 import base64

@@ -12,6 +12,7 @@ The detector never raises on hostile input. Detection always runs in full; the
 allowlist only filters individual matches out of the result, it never
 short-circuits the scan.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -23,6 +24,7 @@ from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
+from pathlib import Path
 from typing import IO
 
 from .regex_detector import _FAMILY_PATTERNS, regex_classify_detailed
@@ -54,7 +56,9 @@ class ColorFormatter(logging.Formatter):
     def __init__(self, fmt: str | None = None, *, stream: IO[str] | None = None) -> None:
         super().__init__(fmt or "%(levelname)s %(name)s: %(message)s")
         target = stream if stream is not None else sys.stderr
-        self._use_color = bool(getattr(target, "isatty", lambda: False)()) and "NO_COLOR" not in os.environ
+        self._use_color = (
+            bool(getattr(target, "isatty", lambda: False)()) and "NO_COLOR" not in os.environ
+        )
 
     def format(self, record: logging.LogRecord) -> str:
         text = super().format(record)
@@ -72,7 +76,9 @@ def enable_colored_logging(level: int = logging.INFO, *, stream: IO[str] | None 
     """
     target = stream if stream is not None else sys.stderr
     for existing in logger.handlers:
-        if isinstance(existing, logging.StreamHandler) and getattr(existing, "_autoguardrails_color", False):
+        if isinstance(existing, logging.StreamHandler) and getattr(
+            existing, "_autoguardrails_color", False
+        ):
             return
     handler: logging.StreamHandler = logging.StreamHandler(target)
     handler.setFormatter(ColorFormatter(stream=target))
@@ -208,9 +214,10 @@ _SENSITIVITY_MIN_THREAT: dict[str, ThreatLevel] = {
 
 def load_detection_config(path: str) -> DetectionConfig:
     """Load a :class:`DetectionConfig` from a JSON file (stdlib only)."""
-    if not os.path.exists(path):
+    config_path = Path(path)
+    if not config_path.exists():
         raise FileNotFoundError(f"Detection config not found: {path}")
-    with open(path, "r", encoding="utf-8") as fh:
+    with config_path.open(encoding="utf-8") as fh:
         data = json.load(fh)
     if not isinstance(data, dict):
         raise ValueError(f"Detection config must be a JSON object: {path}")

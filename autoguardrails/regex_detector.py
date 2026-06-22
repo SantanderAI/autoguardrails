@@ -20,12 +20,13 @@ to override system instructions, break out of context boundaries, or
 manipulate agent behaviour through crafted payloads, Contributor: Gustavo Venegas - ARGORIX.
 CONFIG: Spanish|English.
 """
+
 from __future__ import annotations
 
 import base64
 import re
 import unicodedata
-from typing import Callable
+from collections.abc import Callable
 
 # ---------------------------------------------------------------------------
 # Family patterns (original; one compiled tuple per attack family)

@@ -1,6 +1,7 @@
 # Copyright (c) 2026 Santander Group
 # SPDX-License-Identifier: Apache-2.0
 """Tests for the enriched PromptInjectionDetector."""
+
 from __future__ import annotations
 
 import io
