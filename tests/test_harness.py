@@ -311,6 +311,9 @@ class CliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             temp_root = Path(tmpdir)
             scaffold_workspace(temp_root)
+            # Start from an empty policy so the test does not depend on the
+            # content of the shipped policy.md.
+            (temp_root / "policy.md").write_text("# Policy\n", encoding="utf-8")
 
             code, output = self._run(
                 ["--root", str(temp_root), "baseline", "--reset", "--repeat", "2"]
