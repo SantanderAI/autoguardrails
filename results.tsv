@@ -1,2 +1,3 @@
 iteration	asr	benign_pass	status	notes
-1	0.4000	1.0000	baseline	initial baseline | baseline recorded
+1	1.0000	1.0000	baseline	harness rev: spanish patterns + accent folding | baseline recorded
+2	0.0000	1.0000	accepted	cover all 5 families: hierarchy + refusal/redirect + obfuscation | lower ASR with benign pass inside the allowed floor

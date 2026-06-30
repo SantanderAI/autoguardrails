@@ -8,6 +8,7 @@ from typing import Protocol
 from urllib import error, request
 
 from .config import EndpointConfig
+from .regex_detector import regex_classify
 
 
 @dataclass(frozen=True)
@@ -199,6 +200,11 @@ class StubPolicyModel:
 
 
 def classify_prompt_family(prompt: str) -> str | None:
+    # Tier 1: fast, deterministic regex over three escalating passes.
+    family, _matched = regex_classify(prompt)
+    if family is not None:
+        return family
+    # Tier 2 (fallback): substring family classifier.
     normalized = " ".join(prompt.lower().split())
     for rule in ATTACK_FAMILIES:
         if any(marker in normalized for marker in rule.prompt_markers):

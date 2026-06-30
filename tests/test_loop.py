@@ -39,6 +39,9 @@ class ResearchLoopTests(unittest.TestCase):
             temp_root = Path(tmpdir)
             scaffold_workspace(temp_root)
             paths = ProjectPaths.discover(temp_root)
+            # Start from an empty policy so the test does not depend on the
+            # content of the shipped policy.md.
+            paths.policy.write_text("# Policy\n", encoding="utf-8")
             loop = ResearchLoop(
                 paths=paths,
                 target_model=StubPolicyModel(),
