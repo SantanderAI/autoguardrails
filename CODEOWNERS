@@ -5,20 +5,20 @@
 
 # ── Default ──────────────────────────────────────────────────────────────
 # Every PR needs at least one maintainer approval.
-*                       @SantanderAI/autoguardrails-maintainers
+*                       @SantanderAI/autoguardrails-maintainers @SantanderAI/core-admins
 
 # ── FIXED evaluation surface (change with extra care) ────────────────────
 # The eval suite and judge prompt define the research contract.
-/eval_suite.jsonl       @SantanderAI/autoguardrails-maintainers
-/judge_prompt.md        @SantanderAI/autoguardrails-maintainers
+/eval_suite.jsonl       @SantanderAI/autoguardrails-maintainers @SantanderAI/core-admins
+/judge_prompt.md        @SantanderAI/autoguardrails-maintainers @SantanderAI/core-admins
 
 # ── CI/CD + GitHub config ────────────────────────────────────────────────
 # Changes to workflows, dependabot, issue/PR templates: OSPO sign-off.
-/.github/               @SantanderAI/ospo
+/.github/               @SantanderAI/ospo @SantanderAI/core-admins
 
 # ── Legal & security policy ──────────────────────────────────────────────
 # These files have organization-wide implications.
-LICENSE                 @SantanderAI/ospo
-NOTICE                  @SantanderAI/ospo
-SECURITY.md             @SantanderAI/ospo
-CODEOWNERS              @SantanderAI/ospo
+LICENSE                 @SantanderAI/ospo @SantanderAI/core-admins
+NOTICE                  @SantanderAI/ospo @SantanderAI/core-admins
+SECURITY.md             @SantanderAI/ospo @SantanderAI/core-admins
+CODEOWNERS              @SantanderAI/ospo @SantanderAI/core-admins
