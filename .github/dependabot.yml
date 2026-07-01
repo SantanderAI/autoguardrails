@@ -26,10 +26,9 @@ updates:
       prefix: "chore(deps)"
       include: scope
     groups:
-      python-minor-patch:
-        update-types:
-          - minor
-          - patch
+      python-dependencies:
+        patterns:
+          - "*"
 
   # GitHub Actions used by workflows in .github/workflows/
   # Dependabot keeps SHA pins fresh and bumps the human-readable version comment.
@@ -49,7 +48,6 @@ updates:
       prefix: "ci(deps)"
       include: scope
     groups:
-      gha-minor-patch:
-        update-types:
-          - minor
-          - patch
+      github-actions:
+        patterns:
+          - "*"
