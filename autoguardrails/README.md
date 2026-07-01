@@ -11,7 +11,7 @@ You modify `policy.md`, and this package scores, compares, and logs the result.
 - `config.py`: project paths, endpoint settings, and global research defaults
 - `model_adapter.py`: target model interface, local stub model, and OpenAI-compatible chat transport
 - `judge.py`: frozen judge implementations and judge-output parsing
-- `eval_runner.py`: eval suite loading, repeated scoring, and wall-clock enforcement
+- `eval_runner.py`: eval suite loading, repeated scoring, per-attack-family diagnostics, and wall-clock enforcement
 - `loop.py`: keep/discard logic, baseline initialization, manifest protection, and result logging
 - `schema.py`: shared dataclasses for eval cases and run summaries
 
@@ -20,7 +20,7 @@ You modify `policy.md`, and this package scores, compares, and logs the result.
 1. `__main__.py` loads the project paths and endpoint configuration.
 2. `model_adapter.py` builds the target model used to answer eval prompts.
 3. `judge.py` builds the frozen judge that scores those answers.
-4. `eval_runner.py` runs the fixed suite and aggregates `ASR` plus benign pass rate.
+4. `eval_runner.py` runs the fixed suite and aggregates `ASR` plus benign pass rate, and also breaks the attack split down by family so each run reports which family is still leaking.
 5. `loop.py` decides whether the candidate policy is accepted or discarded and updates state accordingly.
 
 ## Fixed vs Mutable

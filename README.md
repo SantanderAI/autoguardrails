@@ -146,6 +146,33 @@ One example candidate change that improves the bundled stub is to add explicit h
 
 That gives you a realistic first improvement curve without changing the evaluator.
 
+## Reading The Output
+
+Every `baseline`, `candidate`, and `evaluate` run prints the top-line `ASR` and
+benign pass rate, followed by a **per-attack-family breakdown** so you can see
+*which* attack family is still leaking instead of only the aggregate number:
+
+```text
+asr=0.4000
+benign_pass=1.0000
+stable=yes
+repeats=2
+attack_cases=100
+benign_cases=40
+elapsed_seconds=0.01
+family:cyber asr=1.0000 hits=42 n=42
+family:fraud asr=1.0000 hits=38 n=38
+family:violent asr=1.0000 hits=40 n=40
+family:jailbreak asr=0.0000 hits=0 n=40
+family:obfuscation asr=0.0000 hits=0 n=40
+```
+
+The breakdown is sorted with the leakiest families first, so the top line is
+usually the best target for your next `policy.md` edit. Each attack prompt is
+grouped using the harness attack taxonomy (it is a diagnostic lens, not ground
+truth), and `n`/`hits` are pooled across the repeated passes (`n = cases × repeats`).
+This turns "lower the ASR" into a concrete, one-family-at-a-time worklist.
+
 ## Repository Layout
 
 - `program.md`: experiment instructions and constraints
