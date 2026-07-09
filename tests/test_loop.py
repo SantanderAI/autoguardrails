@@ -64,11 +64,19 @@ class ResearchLoopTests(unittest.TestCase):
 
             self.assertEqual("accepted", decision.status)
             self.assertLess(decision.summary.asr, baseline.summary.asr)
+            rows = loop.load_results()
+            self.assertIsNotNone(rows[-1].asr_unguarded)
+            self.assertIsNotNone(rows[-1].policy_delta)
+            self.assertGreater(rows[-1].policy_delta or 0.0, 0.0)
             self.assertEqual(
                 paths.accepted_policy.read_text(encoding="utf-8"),
                 paths.policy.read_text(encoding="utf-8"),
             )
-            self.assertEqual(["baseline", "accepted"], [row.status for row in loop.load_results()])
+            self.assertEqual(["baseline", "accepted"], [row.status for row in rows])
+            self.assertEqual(
+                "iteration\tasr_unguarded\tasr_with_policy\tpolicy_delta\tbenign_pass\tstatus\tnotes",
+                paths.results.read_text(encoding="utf-8").splitlines()[0],
+            )
 
     def test_candidate_rejects_changes_outside_policy(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

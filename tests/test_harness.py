@@ -276,6 +276,37 @@ class LoopHelperTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 loop.load_results()
 
+    def test_load_results_accepts_legacy_rows_without_delta_columns(self) -> None:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_root = Path(tmpdir)
+            scaffold_workspace(temp_root)
+            paths = ProjectPaths.discover(temp_root)
+            loop = ResearchLoop(
+                paths=paths,
+                target_model=StubPolicyModel(),
+                judge=HeuristicFrozenJudge(),
+            )
+            paths.results.write_text(
+                "iteration\tasr\tbenign_pass\tstatus\tnotes\n"
+                "1\t0.1100\t1.0000\tbaseline\tlegacy row\n",
+                encoding="utf-8",
+            )
+
+            rows = loop.load_results()
+
+            self.assertEqual(1, len(rows))
+            self.assertEqual(0.11, rows[0].asr)
+            self.assertIsNone(rows[0].asr_unguarded)
+            self.assertIsNone(rows[0].policy_delta)
+
+            loop.ensure_results_schema()
+            rewritten = paths.results.read_text(encoding="utf-8").splitlines()
+            self.assertEqual(
+                "iteration\tasr_unguarded\tasr_with_policy\tpolicy_delta\tbenign_pass\tstatus\tnotes",
+                rewritten[0],
+            )
+            self.assertEqual("1\t\t0.1100\t\t1.0000\tbaseline\tlegacy row", rewritten[1])
+
     def test_candidate_requires_baseline(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
             temp_root = Path(tmpdir)
@@ -320,10 +351,14 @@ class CliTests(unittest.TestCase):
             )
             self.assertEqual(0, code)
             self.assertIn("status=baseline", output)
+            self.assertIn("asr_unguarded=", output)
+            self.assertIn("asr_with_policy=", output)
+            self.assertIn("policy_delta=", output)
 
             code, output = self._run(["--root", str(temp_root), "status"])
             self.assertEqual(0, code)
             self.assertIn("status=ready", output)
+            self.assertIn("policy_delta=", output)
 
             (temp_root / "policy.md").write_text(COVERING_POLICY, encoding="utf-8")
             code, output = self._run(
@@ -331,6 +366,7 @@ class CliTests(unittest.TestCase):
             )
             self.assertEqual(0, code)
             self.assertIn("status=accepted", output)
+            self.assertIn("policy_delta=", output)
 
     def test_evaluate_command(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -339,6 +375,7 @@ class CliTests(unittest.TestCase):
             code, output = self._run(["--root", str(temp_root), "evaluate", "--repeat", "1"])
         self.assertEqual(0, code)
         self.assertIn("asr=", output)
+        self.assertIn("asr_unguarded=", output)
 
     def test_candidate_without_baseline_returns_error(self) -> None:
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -81,16 +81,27 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.command == "baseline":
             decision = loop.run_baseline(notes=args.notes, repeats=args.repeat, reset=args.reset)
-            print_decision(decision.status, decision.reason, decision.summary)
+            print_decision(
+                decision.status,
+                decision.reason,
+                decision.summary,
+                decision.unguarded_summary,
+            )
             return 0
         if args.command == "candidate":
             decision = loop.run_candidate(notes=args.notes, repeats=args.repeat)
-            print_decision(decision.status, decision.reason, decision.summary)
+            print_decision(
+                decision.status,
+                decision.reason,
+                decision.summary,
+                decision.unguarded_summary,
+            )
             return 0
         if args.command == "evaluate":
             policy_path = args.policy.resolve() if args.policy else paths.policy
+            unguarded_summary = loop.evaluate_unguarded_policy(repeats=args.repeat)
             summary = loop.evaluate_policy_file(policy_path, repeats=args.repeat)
-            print_summary(summary)
+            print_summary(summary, unguarded_summary)
             return 0
         if args.command == "status":
             row = loop.current_best_result()
@@ -100,6 +111,10 @@ def main(argv: list[str] | None = None) -> int:
                 return 0
             print("status=ready")
             print(f"iteration={row.iteration}")
+            if row.asr_unguarded is not None and row.policy_delta is not None:
+                print(f"asr_unguarded={row.asr_unguarded:.4f}")
+                print(f"asr_with_policy={row.asr:.4f}")
+                print(f"policy_delta={row.policy_delta:.4f}")
             print(f"asr={row.asr:.4f}")
             print(f"benign_pass={row.benign_pass:.4f}")
             print(f"notes={row.notes}")
@@ -116,21 +131,29 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
-def print_decision(status: str, reason: str, summary) -> None:
+def print_decision(status: str, reason: str, summary, unguarded_summary) -> None:
     print(f"status={status}")
     print(f"reason={reason}")
-    print_summary(summary)
+    print_summary(summary, unguarded_summary)
 
 
-def print_summary(summary) -> None:
+def print_summary(summary, unguarded_summary=None) -> None:
+    if unguarded_summary is not None:
+        print(f"asr_unguarded={unguarded_summary.asr:.4f}")
+        print(f"asr_with_policy={summary.asr:.4f}")
+        print(f"policy_delta={unguarded_summary.asr - summary.asr:.4f}")
     print(f"asr={summary.asr:.4f}")
     print(f"benign_pass={summary.benign_pass:.4f}")
-    print(f"stable={'yes' if summary.stable else 'no'}")
+    stable = summary.stable and (unguarded_summary is None or unguarded_summary.stable)
+    print(f"stable={'yes' if stable else 'no'}")
     print(f"repeats={len(summary.evaluations)}")
     first = summary.evaluations[0]
     print(f"attack_cases={first.attack_total}")
     print(f"benign_cases={first.benign_total}")
-    print(f"elapsed_seconds={sum(item.elapsed_seconds for item in summary.evaluations):.2f}")
+    elapsed_seconds = sum(item.elapsed_seconds for item in summary.evaluations)
+    if unguarded_summary is not None:
+        elapsed_seconds += sum(item.elapsed_seconds for item in unguarded_summary.evaluations)
+    print(f"elapsed_seconds={elapsed_seconds:.2f}")
 
 
 if __name__ == "__main__":

@@ -26,6 +26,12 @@ The idea is the same:
 
 In this repo, the top-line metric is attack success rate (`ASR`, lower is better), with a benign-pass floor so the system cannot win by refusing everything.
 
+The CLI and `results.tsv` also report an empty-policy baseline so the guardrail's contribution is not confused with the target model's native safety:
+
+- `asr_unguarded`: attack success rate with an empty policy.
+- `asr_with_policy`: attack success rate with the evaluated `policy.md`.
+- `policy_delta`: `asr_unguarded - asr_with_policy`; higher means the policy closed more of the attack gap.
+
 ## What Matters Most
 
 For day-to-day experimentation, three files matter most:
