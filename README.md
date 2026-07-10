@@ -189,6 +189,14 @@ Please report security vulnerabilities responsibly. See our [Security Policy](SE
 for how to report (do **not** open a public issue for vulnerabilities). Contact:
 **opensource@gruposantander.com** or use GitHub Security Advisories.
 
+## Disclaimer
+
+This software is an open source project from the **Santander AI Lab**, provided **"as is"** under its [license](LICENSE), without warranties or conditions of any kind. It is **not an official Banco Santander product or service**, carries no commitment of production support, and does not constitute financial, legal or professional advice.
+
+"Santander" and its logo are registered trademarks of **Banco Santander, S.A.** The project license does not grant any right to use them beyond factual attribution.
+
+If you believe you have found a security vulnerability, follow our [security policy](https://github.com/SantanderAI/.github/blob/main/SECURITY.md) — do not open a public issue. You are responsible for assessing the suitability of this software for your use case and for keeping your own deployments up to date.
+
 ## License
 
 This project is licensed under the **Apache License 2.0** — see the [LICENSE](LICENSE)
