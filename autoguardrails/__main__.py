@@ -131,6 +131,19 @@ def print_summary(summary) -> None:
     print(f"attack_cases={first.attack_total}")
     print(f"benign_cases={first.benign_total}")
     print(f"elapsed_seconds={sum(item.elapsed_seconds for item in summary.evaluations):.2f}")
+    print_family_breakdown(summary.family_stats)
+
+
+def print_family_breakdown(family_stats) -> None:
+    if not family_stats:
+        return
+    # Surface the leakiest families first so the next policy edit is obvious.
+    ranked = sorted(family_stats, key=lambda stat: (-stat.asr, stat.name))
+    for stat in ranked:
+        print(
+            f"family:{stat.name} asr={stat.asr:.4f} "
+            f"hits={stat.attack_successes} n={stat.attack_total}"
+        )
 
 
 if __name__ == "__main__":

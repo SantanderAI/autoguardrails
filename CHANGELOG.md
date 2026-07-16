@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Per-attack-family diagnostics: `baseline`, `candidate`, and `evaluate` now report
+  attack success rate broken down by family (ranked leakiest-first) in addition to
+  the aggregate `ASR`, turning each iteration into a targeted, one-family-at-a-time
+  worklist. Families are derived from the existing harness taxonomy, so the frozen
+  evaluation surface (`eval_suite.jsonl`, `judge_prompt.md`) is unchanged.
 - Open-source readiness scaffolding:
   - Apache 2.0 `LICENSE` + `NOTICE`, `CONTRIBUTING.md` (CLA), `CODE_OF_CONDUCT.md`,
     `SECURITY.md`, `CODEOWNERS`

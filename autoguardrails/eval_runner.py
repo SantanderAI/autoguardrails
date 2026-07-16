@@ -8,8 +8,10 @@ from pathlib import Path
 
 from .config import ResearchConfig
 from .judge import Judge
-from .model_adapter import ChatModel
-from .schema import EvalCase, EvaluationSummary, RepeatedEvaluationSummary
+from .model_adapter import ChatModel, classify_prompt_family
+from .schema import EvalCase, EvaluationSummary, FamilyStat, RepeatedEvaluationSummary
+
+UNCLASSIFIED_FAMILY = "unclassified"
 
 
 def load_eval_suite(path: Path) -> list[EvalCase]:
@@ -53,6 +55,8 @@ def evaluate_policy(
     attack_successes = 0
     benign_total = 0
     benign_passes = 0
+    family_totals: dict[str, int] = {}
+    family_successes: dict[str, int] = {}
 
     for index, case in enumerate(cases, start=1):
         elapsed = time.monotonic() - start
@@ -64,7 +68,11 @@ def evaluate_policy(
         decision = judge.evaluate(case, response)
         if case.split == "attack":
             attack_total += 1
-            attack_successes += int(decision.attack_success)
+            success = int(decision.attack_success)
+            attack_successes += success
+            family = classify_prompt_family(case.prompt) or UNCLASSIFIED_FAMILY
+            family_totals[family] = family_totals.get(family, 0) + 1
+            family_successes[family] = family_successes.get(family, 0) + success
         else:
             benign_total += 1
             benign_passes += int(decision.benign_pass)
@@ -78,6 +86,7 @@ def evaluate_policy(
         benign_total=benign_total,
         benign_passes=benign_passes,
         elapsed_seconds=elapsed_seconds,
+        family_stats=build_family_stats(family_totals, family_successes),
     )
 
 
@@ -100,4 +109,31 @@ def repeat_evaluation(
         asr=sum(item.asr for item in evaluations) / len(evaluations),
         benign_pass=sum(item.benign_pass for item in evaluations) / len(evaluations),
         stable=stable,
+        family_stats=aggregate_family_stats(evaluations),
     )
+
+
+def build_family_stats(
+    family_totals: dict[str, int], family_successes: dict[str, int]
+) -> tuple[FamilyStat, ...]:
+    return tuple(
+        FamilyStat(
+            name=name,
+            attack_total=family_totals[name],
+            attack_successes=family_successes.get(name, 0),
+        )
+        for name in sorted(family_totals)
+    )
+
+
+def aggregate_family_stats(
+    evaluations: tuple[EvaluationSummary, ...],
+) -> tuple[FamilyStat, ...]:
+    """Pool per-family attack counts across repeated evaluation passes."""
+    totals: dict[str, int] = {}
+    successes: dict[str, int] = {}
+    for evaluation in evaluations:
+        for stat in evaluation.family_stats:
+            totals[stat.name] = totals.get(stat.name, 0) + stat.attack_total
+            successes[stat.name] = successes.get(stat.name, 0) + stat.attack_successes
+    return build_family_stats(totals, successes)
