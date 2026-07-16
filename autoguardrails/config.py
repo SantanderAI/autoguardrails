@@ -6,7 +6,9 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-DEFAULT_RESULTS_HEADER = "iteration\tasr\tbenign_pass\tstatus\tnotes\n"
+DEFAULT_RESULTS_HEADER = (
+    "iteration\tasr_unguarded\tasr_with_policy\tpolicy_delta\tbenign_pass\tstatus\tnotes\n"
+)
 
 
 @dataclass(frozen=True)

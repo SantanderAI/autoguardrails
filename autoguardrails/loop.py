@@ -44,6 +44,8 @@ class ResultRow:
     benign_pass: float
     status: str
     notes: str
+    asr_unguarded: float | None = None
+    policy_delta: float | None = None
 
 
 @dataclass(frozen=True)
@@ -51,6 +53,7 @@ class LoopDecision:
     status: str
     reason: str
     summary: RepeatedEvaluationSummary
+    unguarded_summary: RepeatedEvaluationSummary
 
 
 class ResearchLoop:
@@ -75,18 +78,33 @@ class ResearchLoop:
                 "Baseline already exists. Use --reset to start over from the current policy."
             )
 
+        unguarded_summary = self.evaluate_unguarded_policy(repeats=repeats)
         summary = self.evaluate_policy_file(self.paths.policy, repeats=repeats)
         if repeats > 1 and not summary.stable:
             raise RuntimeError(
                 "Baseline runs were unstable. Investigate the harness before continuing."
+            )
+        if repeats > 1 and not unguarded_summary.stable:
+            raise RuntimeError(
+                "Unguarded baseline runs were unstable. Investigate the harness before continuing."
             )
         self.paths.state_dir.mkdir(exist_ok=True)
         self.paths.accepted_policy.write_text(
             self.paths.policy.read_text(encoding="utf-8"), encoding="utf-8"
         )
         self.write_protected_manifest()
-        self.append_result("baseline", summary, self._compose_notes(notes, "baseline recorded"))
-        return LoopDecision(status="baseline", reason="Baseline recorded.", summary=summary)
+        self.append_result(
+            "baseline",
+            summary,
+            self._compose_notes(notes, "baseline recorded"),
+            unguarded_summary=unguarded_summary,
+        )
+        return LoopDecision(
+            status="baseline",
+            reason="Baseline recorded.",
+            summary=summary,
+            unguarded_summary=unguarded_summary,
+        )
 
     def run_candidate(self, notes: str = "", repeats: int = 2) -> LoopDecision:
         if not self.paths.accepted_policy.exists() or not self.paths.protected_manifest.exists():
@@ -100,6 +118,7 @@ class ResearchLoop:
                 "policy.md matches the last accepted policy. Edit policy.md before running candidate."
             )
 
+        unguarded_summary = self.evaluate_unguarded_policy(repeats=repeats)
         summary = self.evaluate_policy_file(self.paths.policy, repeats=repeats)
         current_best = self.current_best_result()
         if current_best is None:
@@ -112,14 +131,27 @@ class ResearchLoop:
             self.paths.accepted_policy.write_text(candidate_text, encoding="utf-8")
         else:
             self.paths.policy.write_text(accepted_text, encoding="utf-8")
-        self.append_result(status, summary, self._compose_notes(notes, reason))
+        self.append_result(
+            status,
+            summary,
+            self._compose_notes(notes, reason),
+            unguarded_summary=unguarded_summary,
+        )
         self.assert_protected_surface_unchanged()
-        return LoopDecision(status=status, reason=reason, summary=summary)
+        return LoopDecision(
+            status=status,
+            reason=reason,
+            summary=summary,
+            unguarded_summary=unguarded_summary,
+        )
 
     def evaluate_policy_file(
         self, policy_path: Path, repeats: int = 1
     ) -> RepeatedEvaluationSummary:
         policy_text = policy_path.read_text(encoding="utf-8")
+        return self.evaluate_policy_text(policy_text, repeats=repeats)
+
+    def evaluate_policy_text(self, policy_text: str, repeats: int = 1) -> RepeatedEvaluationSummary:
         cases = load_eval_suite(self.paths.eval_suite)
         return repeat_evaluation(
             cases=cases,
@@ -129,6 +161,15 @@ class ResearchLoop:
             config=self.config,
             repeats=repeats,
         )
+
+    def evaluate_unguarded_policy(self, repeats: int = 1) -> RepeatedEvaluationSummary:
+        return self.evaluate_policy_text("", repeats=repeats)
+
+    def baseline_result(self) -> ResultRow | None:
+        for row in self.load_results():
+            if row.status == "baseline":
+                return row
+        return None
 
     def current_best_result(self) -> ResultRow | None:
         kept = [row for row in self.load_results() if row.status in KEEP_STATUSES]
@@ -170,14 +211,22 @@ class ResearchLoop:
 
         return "discarded", "candidate did not beat the current best ASR"
 
-    def append_result(self, status: str, summary: RepeatedEvaluationSummary, notes: str) -> None:
+    def append_result(
+        self,
+        status: str,
+        summary: RepeatedEvaluationSummary,
+        notes: str,
+        *,
+        unguarded_summary: RepeatedEvaluationSummary,
+    ) -> None:
+        self.ensure_results_schema()
         rows = self.load_results()
         iteration = rows[-1].iteration + 1 if rows else 1
-        if not self.paths.results.exists():
-            self.paths.results.write_text(DEFAULT_RESULTS_HEADER, encoding="utf-8")
+        policy_delta = unguarded_summary.asr - summary.asr
         with self.paths.results.open("a", encoding="utf-8") as handle:
             handle.write(
-                f"{iteration}\t{summary.asr:.4f}\t{summary.benign_pass:.4f}\t{status}\t{notes}\n"
+                f"{iteration}\t{unguarded_summary.asr:.4f}\t{summary.asr:.4f}\t"
+                f"{policy_delta:.4f}\t{summary.benign_pass:.4f}\t{status}\t{notes}\n"
             )
 
     def load_results(self) -> list[ResultRow]:
@@ -188,19 +237,50 @@ class ResearchLoop:
         for raw_line in lines[1:]:
             if not raw_line.strip():
                 continue
-            parts = raw_line.split("\t", maxsplit=4)
-            if len(parts) != 5:
+            parts = raw_line.split("\t", maxsplit=6)
+            if len(parts) == 5:
+                rows.append(
+                    ResultRow(
+                        iteration=int(parts[0]),
+                        asr=float(parts[1]),
+                        benign_pass=float(parts[2]),
+                        status=parts[3],
+                        notes=parts[4],
+                    )
+                )
+                continue
+            if len(parts) != 7:
                 raise ValueError(f"Invalid results.tsv row: {raw_line}")
             rows.append(
                 ResultRow(
                     iteration=int(parts[0]),
-                    asr=float(parts[1]),
-                    benign_pass=float(parts[2]),
-                    status=parts[3],
-                    notes=parts[4],
+                    asr=float(parts[2]),
+                    benign_pass=float(parts[4]),
+                    status=parts[5],
+                    notes=parts[6],
+                    asr_unguarded=parse_optional_float(parts[1]),
+                    policy_delta=parse_optional_float(parts[3]),
                 )
             )
         return rows
+
+    def ensure_results_schema(self) -> None:
+        if not self.paths.results.exists():
+            self.paths.results.write_text(DEFAULT_RESULTS_HEADER, encoding="utf-8")
+            return
+
+        lines = self.paths.results.read_text(encoding="utf-8").splitlines()
+        if not lines:
+            self.paths.results.write_text(DEFAULT_RESULTS_HEADER, encoding="utf-8")
+            return
+        if lines[0] == DEFAULT_RESULTS_HEADER.strip():
+            return
+
+        rows = self.load_results()
+        with self.paths.results.open("w", encoding="utf-8") as handle:
+            handle.write(DEFAULT_RESULTS_HEADER)
+            for row in rows:
+                handle.write(format_result_row(row))
 
     def write_protected_manifest(self) -> None:
         self.paths.state_dir.mkdir(exist_ok=True)
@@ -289,3 +369,19 @@ def policy_complexity(text: str) -> int:
 
 def normalize_text(text: str) -> str:
     return " ".join(text.split())
+
+
+def parse_optional_float(value: str) -> float | None:
+    return float(value) if value else None
+
+
+def format_optional_float(value: float | None) -> str:
+    return "" if value is None else f"{value:.4f}"
+
+
+def format_result_row(row: ResultRow) -> str:
+    return (
+        f"{row.iteration}\t{format_optional_float(row.asr_unguarded)}\t"
+        f"{row.asr:.4f}\t{format_optional_float(row.policy_delta)}\t"
+        f"{row.benign_pass:.4f}\t{row.status}\t{row.notes}\n"
+    )
